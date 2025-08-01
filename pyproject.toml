@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "metaclaude"
+version = "0.1.0"
+description = "A Poetry-managed Python CLI that bootstraps isolated Claude Code runtime inside Docker to generate complete software projects"
+authors = ["MetaClaude Team <team@metaclaude.dev>"]
+readme = "README.md"
+packages = [{include = "metaclaude"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = {extras = ["all"], version = "^0.12.0"}
+docker = "^7.0.0"
+rich = "^13.7.0"
+pydantic = "^2.5.0"
+pyyaml = "^6.0.1"
+jinja2 = "^3.1.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.12.0"
+ruff = "^0.1.8"
+mypy = "^1.8.0"
+types-pyyaml = "^6.0.12"
+
+[tool.poetry.scripts]
+metaclaude = "metaclaude.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "ARG", "PTH", "PD", "PGH", "PL", "TRY", "NPY", "RUF"]
+ignore = ["S101", "S603", "S607"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true

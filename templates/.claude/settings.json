@@ -1,0 +1,27 @@
+{
+  "model": "{{ model }}",
+  "auto_compact": false,
+  "max_thinking_tokens": 32000,
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "MultiEdit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "LS(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "TodoWrite(*)",
+      "Task(*)",
+      "NotebookRead(*)",
+      "NotebookEdit(*)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "post_tool": "npm run lint --silent || true"
+  }
+}

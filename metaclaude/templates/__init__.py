@@ -1,0 +1,1 @@
+"""Template management system for VCC."""
