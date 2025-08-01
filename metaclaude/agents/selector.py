@@ -169,7 +169,7 @@ class AgentSelector:
         idea: str,
         force_agents: Optional[List[str]] = None,
         max_agents: int = 4,
-    ) -> List[str]:
+    ) -> List[AgentConfig]:
         """Select appropriate agents based on project idea.
         
         Args:
@@ -178,18 +178,18 @@ class AgentSelector:
             max_agents: Maximum number of agents to select
             
         Returns:
-            List of selected agent names
+            List of selected agent configurations
         """
         analysis = self.analyze_idea(idea)
-        selected_agents = set()
+        selected_agent_names = set()
         
         # Add forced agents
         if force_agents:
-            for agent in force_agents:
-                if agent in self.available_agents:
-                    selected_agents.add(agent)
+            for agent_name in force_agents:
+                if agent_name in self.available_agents:
+                    selected_agent_names.add(agent_name)
                 else:
-                    logger.warning(f"Forced agent not available: {agent}")
+                    logger.warning(f"Forced agent not available: {agent_name}")
         
         # Domain-based selection
         domain_agent_map = {
@@ -206,40 +206,47 @@ class AgentSelector:
         
         for domain in analysis["domains"]:
             if domain in domain_agent_map:
-                selected_agents.update(domain_agent_map[domain])
+                selected_agent_names.update(domain_agent_map[domain])
         
         # Technology-based selection
         for tech in analysis["technologies"]:
             if tech in self.tech_stack_agents:
-                selected_agents.update(self.tech_stack_agents[tech])
+                selected_agent_names.update(self.tech_stack_agents[tech])
         
         # Complexity-based selection
         if analysis["complexity"] == "high":
             # High complexity projects need more specialized agents
-            selected_agents.add("devops-engineer")
-            selected_agents.add("qa-engineer")
+            selected_agent_names.add("devops-engineer")
+            selected_agent_names.add("qa-engineer")
         elif analysis["complexity"] == "medium":
             # Medium complexity might need QA
-            if len(selected_agents) < max_agents:
-                selected_agents.add("qa-engineer")
+            if len(selected_agent_names) < max_agents:
+                selected_agent_names.add("qa-engineer")
         
         # Default fallback
-        if not selected_agents:
-            selected_agents.add("fullstack-engineer")
+        if not selected_agent_names:
+            selected_agent_names.add("fullstack-engineer")
         
         # Always include QA for substantial projects
-        if analysis["word_count"] > 20 and "qa-engineer" not in selected_agents:
-            selected_agents.add("qa-engineer")
+        if analysis["word_count"] > 20 and "qa-engineer" not in selected_agent_names:
+            selected_agent_names.add("qa-engineer")
         
         # Limit to max_agents
-        result = list(selected_agents)[:max_agents]
+        result_names = list(selected_agent_names)[:max_agents]
         
         # Ensure we have at least one agent
-        if not result and self.available_agents:
-            result = ["fullstack-engineer"]
+        if not result_names and self.available_agents:
+            result_names = ["fullstack-engineer"]
         
-        logger.info(f"Selected agents: {result}")
-        return result
+        # Get agent configs from names
+        result_configs = [
+            self.available_agents[name]
+            for name in result_names
+            if name in self.available_agents
+        ]
+        
+        logger.info(f"Selected agents: {[agent.name for agent in result_configs]}")
+        return result_configs
     
     def augment_agents(
         self,
@@ -330,7 +337,7 @@ class AgentSelector:
                 guidance_section += "- Consider model deployment and monitoring needs\n"
             
             if "devops" in analysis["domains"]:
-                guidance_section += "- Focus on automation and infrastructure as code\n"
+                guidance_section += "- Focus on automation and in-frastructure as code\n"
                 guidance_section += "- Implement comprehensive monitoring and alerting\n"
                 guidance_section += "- Ensure security and compliance requirements\n"
             

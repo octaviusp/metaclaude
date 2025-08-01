@@ -150,7 +150,7 @@ class MetaClaudeOrchestrator:
                     
                     # Step 5: Generate and inject configuration with Claude-created agents
                     self._inject_agentic_configuration(
-                        workspace_path, idea, model, self.agentic_metadata, custom_template_vars
+                        workspace_path, idea, model, selected_agents, self.agentic_metadata, custom_template_vars
                     )
                     
                     # Step 6: Continue with existing container (no need to relaunch)
@@ -421,6 +421,7 @@ class MetaClaudeOrchestrator:
         workspace_path: Path,
         idea: str,
         model: str,
+        selected_agents: List[Any],
         agentic_metadata: Dict[str, Any],
         custom_template_vars: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -430,14 +431,31 @@ class MetaClaudeOrchestrator:
             workspace_path: Workspace directory
             idea: Project idea
             model: Claude model
+            selected_agents: The Claude-created agent configs
             agentic_metadata: Agentic execution metadata
             custom_template_vars: Custom template variables
         """
         log_execution_start("agentic configuration injection")
         
         try:
-            if agentic_metadata.get("agentic_mode") and "dynamic_agents" in agentic_metadata:
-                # Generate agentic Claude configuration
+            if agentic_metadata.get("agentic_mode") and agentic_metadata.get("natural_creation"):
+                # Use Claude's naturally created agents ONLY
+                logger.info("Using Claude Code's naturally created agents")
+                
+                # Use the Claude-created agent configs directly
+                self._inject_natural_claude_configuration(
+                    workspace_path=workspace_path,
+                    idea=idea,
+                    model=model,
+                    selected_agents=selected_agents,  # These are the Claude-created agents
+                    agentic_metadata=agentic_metadata,
+                    custom_template_vars=custom_template_vars
+                )
+                
+                logger.info(f"Natural Claude configuration generated for {len(selected_agents)} agents")
+            elif agentic_metadata.get("agentic_mode") and "dynamic_agents" in agentic_metadata:
+                # Legacy agentic system (shouldn't be used with natural creation)
+                logger.warning("Using legacy agentic system - this shouldn't happen with natural creation")
                 dynamic_agents = agentic_metadata["dynamic_agents"]
                 blueprint = agentic_metadata["blueprint"]
                 
@@ -452,12 +470,13 @@ class MetaClaudeOrchestrator:
                 
                 logger.info(f"Agentic configuration generated for {len(dynamic_agents)} agents")
             else:
-                # Fall back to traditional configuration
-                logger.warning("Agentic metadata incomplete, falling back to traditional configuration")
+                # This should NOT happen with natural Claude creation - it means something went wrong
+                logger.error("Natural Claude agent creation succeeded but metadata is missing - this is a bug!")
+                logger.warning("Falling back to traditional configuration as last resort")
                 analysis = self._analyze_idea(idea)
-                selected_agents = self._select_agents(idea, None, analysis)
+                fallback_agents = self._select_agents(idea, None, analysis)
                 self._inject_configuration(
-                    workspace_path, idea, model, selected_agents, analysis, custom_template_vars
+                    workspace_path, idea, model, fallback_agents, analysis, custom_template_vars
                 )
             
             log_execution_complete("agentic configuration injection")
@@ -545,6 +564,111 @@ class MetaClaudeOrchestrator:
         
         logger.info(f"Configuration injected for {len(selected_agents)} agents")
         log_execution_complete("configuration injection")
+    
+    def _inject_natural_claude_configuration(
+        self,
+        workspace_path: Path,
+        idea: str,
+        model: str,
+        selected_agents: List[Any],
+        agentic_metadata: Dict[str, Any],
+        custom_template_vars: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Inject configuration using Claude's naturally created agents.
+        
+        Args:
+            workspace_path: Workspace directory path
+            idea: Project idea
+            model: Claude model name
+            selected_agents: Claude-created agent configs  
+            agentic_metadata: Metadata from Claude agent creation
+            custom_template_vars: Custom template variables
+        """
+        log_execution_start("natural Claude configuration injection")
+        
+        try:
+            logger.info(f"Injecting configuration for {len(selected_agents)} Claude-created agents")
+            
+            # Log the agents we're using
+            for agent in selected_agents:
+                logger.info(f"  - Using Claude-created agent: {agent.name} ({agent.description})")
+            
+            # Create template variables including Claude's reasoning
+            template_vars = {
+                "project_name": self._generate_project_name(idea),
+                "project_description": idea,
+                "architecture_description": "Architecture designed by Claude Code's intelligence",
+                "tech_stack": agentic_metadata.get("tech_stack", "Determined by Claude Code"),
+                "development_commands": self._generate_development_commands(selected_agents),
+                "implementation_details": self._generate_claude_implementation_details(agentic_metadata),
+                "extension_points": "Extensible design created by Claude Code",
+                "custom_instructions": f"""
+## Claude Code Agent Instructions
+
+This project uses agents intelligently created by Claude Code:
+
+{chr(10).join(f"- **{agent.name}**: {agent.description}" for agent in selected_agents)}
+
+**Coordination Strategy**: {agentic_metadata.get('coordination_strategy', 'Natural')}
+**Estimated Duration**: {agentic_metadata.get('estimated_duration', '2-6 hours')}
+
+**Claude's Reasoning**: {agentic_metadata.get('claude_reasoning', 'Agents created through intelligent analysis')}
+
+Work together efficiently to deliver a high-quality solution.
+""",
+                "generation_timestamp": datetime.now().isoformat()
+            }
+            
+            # Add custom variables if provided
+            if custom_template_vars:
+                template_vars.update(custom_template_vars)
+            
+            # Generate Claude Code configuration using template manager
+            self.template_manager.generate_claude_configuration(
+                workspace_path=workspace_path,
+                selected_agents=selected_agents,
+                template_vars=template_vars
+            )
+            
+            logger.info(f"Natural Claude configuration injected for {len(selected_agents)} agents")
+            log_execution_complete("natural Claude configuration injection")
+            
+        except Exception as e:
+            logger.error(f"Natural Claude configuration injection failed: {e}")
+            raise MetaClaudeExecutionError(f"Configuration injection failed: {e}")
+    
+    def _generate_claude_implementation_details(self, agentic_metadata: Dict[str, Any]) -> str:
+        """Generate implementation details from Claude's analysis.
+        
+        Args:
+            agentic_metadata: Metadata from Claude agent creation
+            
+        Returns:
+            Implementation details string
+        """
+        details = [
+            "## Claude Code Implementation Strategy",
+            "",
+            f"**Creation Method**: {agentic_metadata.get('creation_method', 'Natural Claude analysis')}",
+            f"**Agent Count**: {agentic_metadata.get('agent_count', 'Unknown')}",
+            f"**Coordination**: {agentic_metadata.get('coordination_strategy', 'Natural collaboration')}",
+            "",
+            "## Success Criteria"
+        ]
+        
+        criteria = agentic_metadata.get('success_criteria', [])
+        for criterion in criteria:
+            details.append(f"- {criterion}")
+        
+        if not criteria:
+            details.extend([
+                "- Working implementation",
+                "- Clean code structure", 
+                "- Proper documentation",
+                "- Meets user requirements"
+            ])
+        
+        return "\n".join(details)
     
     def _launch_claude_session_for_agent_creation(
         self,
